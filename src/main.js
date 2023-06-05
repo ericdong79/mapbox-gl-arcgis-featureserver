@@ -2,7 +2,7 @@ import tilebelt from '@mapbox/tilebelt'
 import tileDecode from 'arcgis-pbf-parser'
 
 export default class FeatureService {
-  constructor(sourceId, map, arcgisOptions, geojsonSourceOptions) {
+  constructor(sourceId, map, arcgisOptions, geojsonSourceOptions, getGeometryHandler) {
     if (!sourceId || !map || !arcgisOptions) throw new Error('Source id, map and arcgisOptions must be supplied as the first three arguments.')
     if (!arcgisOptions.url) throw new Error('A url must be supplied as part of the esriServiceOptions object.')
 
@@ -12,7 +12,9 @@ export default class FeatureService {
     this._tileIndices = new Map()
     this._featureIndices = new Map()
     this._featureCollections = new Map()
-
+    this._getGeometry = getGeometryHandler || function (extent) {
+      return {geometry: JSON.stringify(extent), type: 'esriGeometryEnvelope'}
+    }
     this._esriServiceOptions = Object.assign({
       useStaticZoomLevel: false,
       minZoom: arcgisOptions.useStaticZoomLevel ? 7 : 2,
@@ -69,68 +71,68 @@ export default class FeatureService {
       })
   }
 
-  destroySource() {
+  destroySource () {
     this.disableRequests()
     this._map.removeSource(this.sourceId)
   }
 
-  _getBlankFc() {
+  _getBlankFc () {
     return {
       type: 'FeatureCollection',
       features: []
     }
   }
 
-  _setBounds(bounds) {
+  _setBounds (bounds) {
     this._maxExtent = bounds
   }
 
-  get supportsGeojson() {
+  get supportsGeojson () {
     return this.serviceMetadata.supportedQueryFormats.indexOf('geoJSON') > -1
   }
 
-  get supportsPbf() {
+  get supportsPbf () {
     return this.serviceMetadata.supportedQueryFormats.indexOf('PBF') > -1
   }
 
-  disableRequests() {
+  disableRequests () {
     this._map.off('moveend', this._boundEvent)
   }
 
-  enableRequests() {
+  enableRequests () {
     this._boundEvent = this._findAndMapData.bind(this)
     this._map.on('moveend', this._boundEvent)
   }
 
-  _clearAndRefreshTiles() {
+  _clearAndRefreshTiles () {
     this._tileIndices = new Map()
     this._featureIndices = new Map()
     this._featureCollections = new Map()
     this._findAndMapData()
   }
 
-  setWhere(newWhere) {
+  setWhere (newWhere) {
     this._esriServiceOptions.where = newWhere
     this._clearAndRefreshTiles()
   }
 
-  clearWhere() {
+  clearWhere () {
     this._esriServiceOptions.where = '1=1'
     this._clearAndRefreshTiles()
   }
 
-  setDate(to, from) {
+  setDate (to, from) {
     this._esriServiceOptions.to = to
     this._esriServiceOptions.from = from
     this._clearAndRefreshTiles()
   }
 
-  setToken(token) {
+  setToken (token) {
     this._esriServiceOptions.token = token
     this._clearAndRefreshTiles()
   }
 
-  _createOrGetTileIndex(zoomLevel) {
+  _createOrGetTileIndex (zoomLevel) {
     const existingZoomIndex = this._tileIndices.get(zoomLevel)
     if (existingZoomIndex) return existingZoomIndex
     const newIndex = new Map()
@@ -138,7 +140,7 @@ export default class FeatureService {
     return newIndex
   }
 
-  _createOrGetFeatureCollection(zoomLevel) {
+  _createOrGetFeatureCollection (zoomLevel) {
     const existingZoomIndex = this._featureCollections.get(zoomLevel)
     if (existingZoomIndex) return existingZoomIndex
     const fc = this._getBlankFc()
@@ -146,7 +148,7 @@ export default class FeatureService {
     return fc
   }
 
-  _createOrGetFeatureIdIndex(zoomLevel) {
+  _createOrGetFeatureIdIndex (zoomLevel) {
     const existingFeatureIdIndex = this._featureIndices.get(zoomLevel)
     if (existingFeatureIdIndex) return existingFeatureIdIndex
     const newFeatureIdIndex = new Map()
@@ -154,7 +156,7 @@ export default class FeatureService {
     return newFeatureIdIndex
   }
 
-  async _findAndMapData() {
+  async _findAndMapData () {
     const z = this._map.getZoom()
 
     if (z < this._esriServiceOptions.minZoom) {
@@ -217,7 +219,7 @@ export default class FeatureService {
     this._updateFcOnMap(fc)
   }
 
-  async _loadTiles(tilesToRequest, tolerance, featureIdIndex, fc) {
+  async _loadTiles (tilesToRequest, tolerance, featureIdIndex, fc) {
     return new Promise((resolve) => {
       const promises = tilesToRequest.map(t => this._getTile(t, tolerance))
       Promise.all(promises).then((featureCollections) => {
@@ -229,7 +231,7 @@ export default class FeatureService {
     })
   }
 
-  _iterateItems(tileFc, featureIdIndex, fc) {
+  _iterateItems (tileFc, featureIdIndex, fc) {
     tileFc.features.forEach((feature) => {
       if (!featureIdIndex.has(feature.id)) {
         fc.features.push(feature)
@@ -238,7 +240,7 @@ export default class FeatureService {
     })
   }
 
-  get _time() {
+  get _time () {
     if (!this._esriServiceOptions.to) return false
     let from = this._esriServiceOptions.from
     let to = this._esriServiceOptions.to
@@ -248,7 +250,7 @@ export default class FeatureService {
     return `${from},${to}`
   }
 
-  _getTile(tile, tolerance) {
+  _getTile (tile, tolerance) {
     const tileBounds = tilebelt.tileToBBOX(tile)
 
     const extent = {
@@ -261,10 +263,10 @@ export default class FeatureService {
       xmax: tileBounds[2],
       ymax: tileBounds[3]
     }
-
+    const geometry = this._getGeometry(extent)
     const params = new URLSearchParams({
       f: this._esriServiceOptions.f,
-      geometry: JSON.stringify(extent),
+      geometry: geometry.geometry,
       where: this._esriServiceOptions.where,
       outFields: this._esriServiceOptions.outFields,
       outSR: 4326,
@@ -278,7 +280,7 @@ export default class FeatureService {
       }),
       resultType: 'tile',
       spatialRel: 'esriSpatialRelIntersects',
-      geometryType: 'esriGeometryEnvelope',
+      geometryType: geometry.type,
       inSR: 4326
     })
 
@@ -301,11 +303,11 @@ export default class FeatureService {
     })
   }
 
-  _updateFcOnMap(fc) {
+  _updateFcOnMap (fc) {
     this._map.getSource(this.sourceId).setData(fc)
   }
 
-  _doesTileOverlapBbox(tile, bbox) {
+  _doesTileOverlapBbox (tile, bbox) {
     const tileBounds = tile.length === 4 ? tile : tilebelt.tileToBBOX(tile)
     if (tileBounds[2] < bbox[0][0]) return false
     if (tileBounds[0] > bbox[1][0]) return false
@@ -314,10 +316,10 @@ export default class FeatureService {
     return true
   }
 
-  _getServiceMetadata() {
+  _getServiceMetadata () {
     if (this.serviceMetadata !== null) return Promise.resolve(this.serviceMetadata)
 
-    const params = new URLSearchParams({f: 'json'})
+    const params = new URLSearchParams({ f: 'json' })
 
     this._appendTokenIfExists(params)
     return this._requestJson(`${this._esriServiceOptions.url}?${params.toString()}`, this._esriServiceOptions.fetchOptions)
@@ -331,7 +333,7 @@ export default class FeatureService {
       })
   }
 
-  getFeaturesByLonLat(lnglat, radius, returnGeometry) {
+  getFeaturesByLonLat (lnglat, radius, returnGeometry) {
     returnGeometry = returnGeometry ? returnGeometry : false
     radius = radius ? radius : 20
 
@@ -362,7 +364,7 @@ export default class FeatureService {
     })
   }
 
-  getFeaturesByObjectIds(objectIds, returnGeometry) {
+  getFeaturesByObjectIds (objectIds, returnGeometry) {
     if (Array.isArray(objectIds)) objectIds = objectIds.join(',')
     returnGeometry = returnGeometry ? returnGeometry : false
     const params = new URLSearchParams({
@@ -381,7 +383,7 @@ export default class FeatureService {
     })
   }
 
-  _projectBounds() {
+  _projectBounds () {
     const params = new URLSearchParams({
       geometries: JSON.stringify({
         geometryType: 'esriGeometryEnvelope',
@@ -413,7 +415,7 @@ export default class FeatureService {
       })
   }
 
-  _requestJson(url, fetchOptions) {
+  _requestJson (url, fetchOptions) {
     return new Promise((resolve, reject) => {
       fetch(url, fetchOptions)
         .then(response => response.json())
@@ -425,11 +427,11 @@ export default class FeatureService {
     })
   }
 
-  _projectionEndpointIsFallback() {
+  _projectionEndpointIsFallback () {
     return this._esriServiceOptions.projectionEndpoint === this._fallbackProjectionEndpoint
   }
 
-  _setAttribution() {
+  _setAttribution () {
     const POWERED_BY_ESRI_ATTRIBUTION_STRING = 'Powered by <a href="https://www.esri.com">Esri</a>'
 
     const attributionController = this._map._controls.find(c => '_attribHTML' in c)
@@ -455,7 +457,7 @@ export default class FeatureService {
     attributionController._updateAttributions()
   }
 
-  _appendTokenIfExists(params) {
+  _appendTokenIfExists (params) {
     const token = this._esriServiceOptions.token
     if (token !== null) {
       params.append('token', token)

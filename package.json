@@ -1,6 +1,6 @@
 {
-  "name": "mapbox-gl-arcgis-featureserver",
-  "version": "0.0.7",
+  "name": "@hansdo/mapbox-gl-arcgis-featureserver",
+  "version": "0.0.9",
   "description": "A small library for requesting features from an arcgis feature server using tiles",
   "main": "dist/mapbox-gl-arcgis-featureserver.js",
   "module": "dist/mapbox-gl-arcgis-featureserver.esm.js",
@@ -22,32 +22,19 @@
     "arcgis-pbf-parser": "0.0.1"
   },
   "devDependencies": {
-    "@ant-design/icons-vue": "^5.1.9",
     "@rollup/plugin-commonjs": "^19.0.0",
     "@rollup/plugin-node-resolve": "^13.0.0",
-    "ant-design-vue": "^1.7.3",
     "ava": "^1.0.1",
     "benchmark": "^2.1.4",
     "cross-env": "^5.2.0",
-    "css-loader": "^2.1.0",
     "eslint": "^7.26.0",
     "eslint-config-mourner": "^3.0.0",
     "esm": "^3.0.84",
     "file-loader": "^6.0.0",
     "json-loader": "^0.5.7",
     "load-json-file": "^5.1.0",
-    "maplibre-gl": "^1.13.0-rc.5",
     "rollup": "^2.48.0",
-    "rollup-plugin-terser": "^7.0.2",
-    "style-loader": "^2.0.0",
-    "vue": "^2.5.22",
-    "vue-loader": "^15.6.2",
-    "vue-range-component": "^1.0.3",
-    "vue-router": "^3.5.1",
-    "vue-template-compiler": "^2.5.22",
-    "webpack": "^4.29.0",
-    "webpack-cli": "^3.2.1",
-    "webpack-dev-server": "^3.1.14"
+    "rollup-plugin-terser": "^7.0.2"
   },
   "repository": "github:rowanwins/mapbox-gl-arcgis-featureserver",
   "bugs": {
